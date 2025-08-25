@@ -49,16 +49,16 @@ The system is secure, scalable, user-friendly, and built using open-source techn
 
 ##  How to Run the Project
 
-###  Backend (Python Flask)
+Backend (Python Flask)
 ```bash
 cd backend
 python app.py
 
-**Frontend (HTML/CSS/JS)**
+**  Frontend (HTML/CSS/JS)  **
 ```bash
 frontend/index.html
 
-**Run Unit & Integration Tests**
+**  Run Unit & Integration Tests  **
 ```bash
 pytest tests/
 
