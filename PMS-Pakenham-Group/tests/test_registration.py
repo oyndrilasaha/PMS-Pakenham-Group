@@ -1,1 +1,0 @@
-# Test registration placeholder
