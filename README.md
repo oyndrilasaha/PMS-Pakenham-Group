@@ -6,7 +6,7 @@ Kent Institute Australia | Trimester 2, 2025
 
 ---
 
-## 📘 Overview
+## Overview
 
 The **Smart Patient Management System (PMS)** is developed for **Pakenham Hospital** to modernise hospital services such as:
 
@@ -21,7 +21,7 @@ The system is secure, scalable, user-friendly, and built using open-source techn
 
 ---
 
-## 👥 Team Members
+## Team Members
 
 | Name               | Role                                 |
 |--------------------|--------------------------------------|
@@ -33,7 +33,7 @@ The system is secure, scalable, user-friendly, and built using open-source techn
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 | Layer       | Tools/Technologies                       |
 |-------------|------------------------------------------|
@@ -47,9 +47,22 @@ The system is secure, scalable, user-friendly, and built using open-source techn
 
 ---
 
-## 🚀 How to Run the Project
+##  How to Run the Project
 
-### ▶️ Backend (Python Flask)
+###  Backend (Python Flask)
 ```bash
 cd backend
 python app.py
+### Frontend (HTML/CSS/JS)
+To view the frontend, open the main HTML file in your browser:
+```bash
+frontend/index.html
+### Run Unit & Integration Tests
+
+Make sure you have `pytest` installed.  
+To run all test cases, open your terminal and execute the following command from the project’s root directory:
+
+```bash
+pytest tests/
+
+
