@@ -53,15 +53,12 @@ The system is secure, scalable, user-friendly, and built using open-source techn
 ```bash
 cd backend
 python app.py
-### Frontend (HTML/CSS/JS)
-To view the frontend, open the main HTML file in your browser:
+
+**Frontend (HTML/CSS/JS)**
 ```bash
 frontend/index.html
-### Run Unit & Integration Tests
 
-Make sure you have `pytest` installed.  
-To run all test cases, open your terminal and execute the following command from the project’s root directory:
-
+**Run Unit & Integration Tests**
 ```bash
 pytest tests/
 
