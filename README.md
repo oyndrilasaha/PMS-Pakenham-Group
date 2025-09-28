@@ -38,7 +38,7 @@ The system is secure, scalable, user-friendly, and built using open-source techn
 | Layer       | Tools/Technologies                       |
 |-------------|------------------------------------------|
 | Frontend    | HTML, CSS, JavaScript                    |
-| Backend     | Python (Flask)                           |
+| Backend     | Python HTML, (Flask)                     |
 | Database    | PostgreSQL                               |
 | Testing     | PyTest, Selenium, Postman                |
 | Prototyping | Figma                                    |
