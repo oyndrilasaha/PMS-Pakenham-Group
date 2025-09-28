@@ -1,14 +1,319 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Patient Management System</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PMS Prototype – Pakenham Hospital</title>
+<link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
-  <h1>Welcome to the Patient Management System</h1>
-  <button onclick="bookAppointment()">Book Appointment</button>
-  <script src="appointment.js"></script>
+<header class="header">
+  <div class="brand">🏥 Pakenham Hospital – Smart PMS (Prototype)</div>
+  <div class="row" id="authPanel">
+    <select id="role">
+      <option value="patient">Patient</option>
+      <option value="doctor">Doctor</option>
+      <option value="admin">Admin</option>
+    </select>
+    <input id="name" placeholder="Your name"/>
+    <button class="btn" onclick="login()">Login</button>
+  </div>
+  <div class="row" id="userPanel" style="display:none">
+    <span id="who" class="badge"></span>
+    <button class="btn alt" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="nav" class="nav" style="display:none"></div>
+  <div id="screens" class="grid"></div>
+</div>
+
+<footer class="footer">Assessment 3 Hi‑Fidelity Prototype (aligned to Assessment 2 scope: Registration, Scheduling, Attendance, Chatbot, Counselling; RBAC; Agile)</footer>
+
+<script>
+const store = {
+  doctors:[
+    {id:'d1', name:'Dr. Green', specialty:'Cardiology'},
+    {id:'d2', name:'Dr. Patel', specialty:'General'},
+    {id:'d3', name:'Dr. Wong', specialty:'Mental Health'}
+  ],
+  slots:[
+    {id:'s1', doctor:'d1', date:'2025-10-10', time:'10:00'},
+    {id:'s2', doctor:'d1', date:'2025-10-10', time:'10:30'},
+    {id:'s3', doctor:'d2', date:'2025-10-11', time:'09:00'},
+    {id:'s4', doctor:'d3', date:'2025-10-12', time:'14:00'}
+  ],
+  appointments:[],
+  checkins:[]
+};
+
+let session = null;
+
+function login(){
+  const role = document.getElementById('role').value;
+  const name = document.getElementById('name').value || (role==='admin'?'Admin':'Guest');
+  session = {role, name, id: 'u'+Math.random().toString(36).slice(2,8)};
+  document.getElementById('authPanel').style.display='none';
+  document.getElementById('userPanel').style.display='flex';
+  document.getElementById('who').innerText = name + ' ('+role+')';
+  buildNav();
+  render();
+}
+
+function logout(){
+  session=null;
+  document.getElementById('authPanel').style.display='flex';
+  document.getElementById('userPanel').style.display='none';
+  document.getElementById('nav').style.display='none';
+  document.getElementById('screens').innerHTML='';
+}
+
+const tabsByRole = {
+  patient:[
+    ['book','Book Appointment'],
+    ['myapps','My Appointments'],
+    ['checkin','Check‑in (Attendance)'],
+    ['counselling','Counselling Appointment'],
+    ['chat','AI Chatbot']
+  ],
+  doctor:[
+    ['doctorToday','Today\'s Appointments']
+  ],
+  admin:[
+    ['adminDashboard','Admin Dashboard'],
+    ['manageDocs','Manage Doctors'],
+    ['manageSlots','Manage Slots'],
+    ['allApps','All Appointments']
+  ]
+};
+
+let activeTab = null;
+function buildNav(){
+  const nav = document.getElementById('nav');
+  const tabs = tabsByRole[session.role];
+  nav.innerHTML = tabs.map(([id,label]) => `<div class="tab" id="tab-${id}" onclick="switchTab('${id}')">${label}</div>`).join('');
+  nav.style.display='flex';
+  activeTab = tabs[0][0];
+  setActive();
+}
+function setActive(){
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  const at = document.getElementById('tab-'+activeTab);
+  if(at) at.classList.add('active');
+}
+function switchTab(id){ activeTab=id; setActive(); render(); }
+
+function render(){
+  const screens = document.getElementById('screens');
+  if(!session) return;
+  const r = session.role;
+  if(r==='patient') screens.innerHTML = patientUI();
+  if(r==='doctor') screens.innerHTML = doctorUI();
+  if(r==='admin')  screens.innerHTML = adminUI();
+}
+
+function options(list, val='id', label='name'){
+  return list.map(x => `<option value="${x[val]}">${x[label]}${x.specialty?(' – '+x.specialty):''}</option>`).join('');
+}
+
+function patientUI(){
+  const myApps = store.appointments.filter(a => a.userId===session.id);
+  return `
+  <!-- Book Appointment -->
+  ${ activeTab==='book' ? `
+  <div class="card"><h3>Book Appointment</h3>
+    <div class="content">
+      <div class="row">
+        <div><label>Doctor</label><select id="bDoctor">${ options(store.doctors) }</select></div>
+        <div><label>Slot</label><select id="bSlot">${ options(store.slots,'id','time') }</select></div>
+        <div><label>Reason</label><input id="bReason" placeholder="Brief reason"/></div>
+        <button class="btn" onclick="book()">Book</button>
+      </div>
+      <p class="badge">Tip: Choose Dr. Wong for counselling.</p>
+    </div>
+  </div>` : ''}
+
+  <!-- My Appointments -->
+  ${ activeTab==='myapps' ? `
+  <div class="card"><h3>My Appointments</h3>
+    <div class="content">
+      <table class="table">
+        <thead><tr><th>Doctor</th><th>Specialty</th><th>Date</th><th>Time</th><th>Status</th></tr></thead>
+        <tbody>
+        ${ myApps.map(a=>`<tr>
+          <td>${a.doctor.name}</td>
+          <td>${a.doctor.specialty}</td>
+          <td>${a.date}</td>
+          <td>${a.time}</td>
+          <td>${a.completed?'Completed':'Booked'}</td>
+        </tr>`).join('') }
+        </tbody>
+      </table>
+    </div>
+  </div>` : ''}
+
+  <!-- Check-in -->
+  ${ activeTab==='checkin' ? `
+  <div class="card"><h3>Check‑in (Attendance)</h3>
+    <div class="content">
+      <div class="row">
+        <select id="ciApp">
+          ${ myApps.map(a=>`<option value="${a.id}">${a.date} ${a.time} – ${a.doctor.name}</option>`).join('') }
+        </select>
+        <button class="btn" onclick="checkin()">Scan & Check‑in</button>
+      </div>
+      <div id="ciMsg" class="badge" style="margin-top:10px"></div>
+    </div>
+  </div>` : ''}
+
+  <!-- Counselling -->
+  ${ activeTab==='counselling' ? `
+  <div class="card"><h3>Book Counselling</h3>
+    <div class="content">
+      <div class="row">
+        <div><label>Counsellor</label><select id="cDoc">${ options(store.doctors.filter(d=>d.specialty==='Mental Health')) }</select></div>
+        <div><label>Slot</label><select id="cSlot">${ options(store.slots.filter(s=>store.doctors.find(d=>d.id===s.doctor).specialty==='Mental Health'),'id','time') }</select></div>
+        <button class="btn" onclick="bookCounselling()">Book Counselling</button>
+      </div>
+    </div>
+  </div>` : ''}
+
+  <!-- Chatbot -->
+  ${ activeTab==='chat' ? `
+  <div class="card"><h3>AI Chatbot (Mock)</h3>
+    <div class="content">
+      <div id="chatlog" style="height:180px;overflow:auto;padding:8px;background:#0d1628;border-radius:10px;border:1px solid rgba(255,255,255,0.1);margin-bottom:10px"></div>
+      <div class="row"><input id="chatq" placeholder="Ask about appointments, times, or contact"/><button class="btn" onclick="ask()">Send</button></div>
+    </div>
+  </div>` : ''}
+  `;
+}
+
+function doctorUI(){
+  const mine = store.appointments;
+  return `
+  <div class="card"><h3>Today's Appointments</h3>
+    <div class="content">
+      <table class="table">
+        <thead><tr><th>Patient</th><th>Date</th><th>Time</th><th>Reason</th><th>Checked-in</th></tr></thead>
+        <tbody>
+        ${ mine.map(a=>`<tr>
+          <td>${a.userName}</td><td>${a.date}</td><td>${a.time}</td><td>${a.reason}</td>
+          <td>${store.checkins.some(c=>c.appId===a.id)?'Yes':'No'}</td>
+        </tr>`).join('') }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  `;
+}
+
+function adminUI(){
+  return `
+  <div class="card"><h3>Admin Dashboard</h3><div class="content">
+    <div class="kpi">
+      <div class="tile"><div class="t">Doctors</div><div class="v">${store.doctors.length}</div></div>
+      <div class="tile"><div class="t">Slots</div><div class="v">${store.slots.length}</div></div>
+      <div class="tile"><div class="t">Appointments</div><div class="v">${store.appointments.length}</div></div>
+      <div class="tile"><div class="t">Check‑ins</div><div class="v">${store.checkins.length}</div></div>
+    </div>
+  </div></div>
+
+  ${ activeTab==='manageDocs' ? `
+  <div class="card"><h3>Manage Doctors</h3><div class="content">
+    <div class="row">
+      <input id="adName" placeholder="Doctor name"/>
+      <select id="adSpec">
+        <option>General</option><option>Cardiology</option><option>Mental Health</option><option>Orthopedics</option>
+      </select>
+      <button class="btn" onclick="addDoctor()">Add</button>
+    </div>
+    <ul>${store.doctors.map(d=>`<li>${d.name} – ${d.specialty}</li>`).join('')}</ul>
+  </div></div>` : ''}
+
+  ${ activeTab==='manageSlots' ? `
+  <div class="card"><h3>Manage Slots</h3><div class="content">
+    <div class="row">
+      <select id="msDoc">${options(store.doctors)}</select>
+      <input id="msDate" type="date"/>
+      <input id="msTime" type="time"/>
+      <button class="btn" onclick="addSlot()">Add Slot</button>
+    </div>
+    <table class="table"><thead><tr><th>Doctor</th><th>Date</th><th>Time</th></tr></thead>
+    <tbody>${store.slots.map(s=>`<tr><td>${store.doctors.find(d=>d.id===s.doctor).name}</td><td>${s.date}</td><td>${s.time}</td></tr>`).join('')}</tbody></table>
+  </div></div>` : ''}
+
+  ${ activeTab==='allApps' ? `
+  <div class="card"><h3>All Appointments</h3><div class="content">
+    <table class="table"><thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th></tr></thead>
+    <tbody>${store.appointments.map(a=>`<tr><td>${a.userName}</td><td>${a.doctor.name}</td><td>${a.date}</td><td>${a.time}</td><td>${a.reason}</td></tr>`).join('')}</tbody></table>
+  </div></div>` : ''}
+  `;
+}
+
+function book(){
+  const docId = document.getElementById('bDoctor').value;
+  const slotId = document.getElementById('bSlot').value;
+  const reason = document.getElementById('bReason').value || 'General';
+  const slot = store.slots.find(s=>s.id===slotId);
+  const doctor = store.doctors.find(d=>d.id===docId);
+  if(!slot || !doctor) return alert('Choose doctor and slot');
+  const id = 'a'+Math.random().toString(36).slice(2,9);
+  store.appointments.push({id, userId:session.id, userName:session.name, doctor, date:slot.date, time:slot.time, reason, completed:false});
+  store.slots = store.slots.filter(s=>s.id!==slotId);
+  alert('Appointment booked.');
+  render();
+}
+
+function bookCounselling(){
+  const docId = document.getElementById('cDoc').value;
+  const slotId = document.getElementById('cSlot').value;
+  const slot = store.slots.find(s=>s.id===slotId);
+  const doctor = store.doctors.find(d=>d.id===docId);
+  const id = 'a'+Math.random().toString(36).slice(2,9);
+  store.appointments.push({id, userId:session.id, userName:session.name, doctor, date:slot.date, time:slot.time, reason:'Counselling', completed:false});
+  store.slots = store.slots.filter(s=>s.id!==slotId);
+  alert('Counselling appointment booked.');
+  render();
+}
+
+function checkin(){
+  const appId = document.getElementById('ciApp').value;
+  const ts = new Date().toISOString();
+  store.checkins.push({userId:session.id, appId, ts});
+  document.getElementById('ciMsg').innerText = 'Checked-in at '+ts;
+}
+
+function addDoctor(){
+  const name = document.getElementById('adName').value.trim();
+  const spec = document.getElementById('adSpec').value;
+  if(!name) return alert('Name required');
+  store.doctors.push({id:'d'+Math.random().toString(36).slice(2,6), name, specialty:spec});
+  render();
+}
+
+function addSlot(){
+  const doc = document.getElementById('msDoc').value;
+  const date = document.getElementById('msDate').value;
+  const time = document.getElementById('msTime').value;
+  if(!date || !time) return alert('Date/time required');
+  store.slots.push({id:'s'+Math.random().toString(36).slice(2,6), doctor:doc, date, time});
+  render();
+}
+
+function ask(){
+  const q = (document.getElementById('chatq').value||'').toLowerCase();
+  const log = document.getElementById('chatlog');
+  const reply = (q.includes('time')||q.includes('slot')) ? 'Clinic hours are 9am–5pm. You can view available slots under “Book Appointment”.' :
+                (q.includes('contact')||q.includes('phone')) ? 'Pakenham Hospital main line: (03) 5555 1234.' :
+                (q.includes('cancel')) ? 'To cancel, contact reception 24 hours prior to your appointment.' :
+                'I can help with appointments, hours, or contact info.';
+  log.innerHTML += `<div><b>You:</b> ${q}</div><div><b>Bot:</b> ${reply}</div>`;
+  log.scrollTop = log.scrollHeight;
+  document.getElementById('chatq').value='';
+}
+</script>
 </body>
 </html>
